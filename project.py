@@ -8,9 +8,9 @@ from torch import nn, optim, tensor, from_numpy, FloatTensor, device, cuda, max 
 import torch.nn.functional as F
 
 # Paths to data
-TRAIN_PATH = "./AudioMNIST/data/train"
-DEV_PATH = "./AudioMNIST/data/dev"
-TEST_PATH = "./AudioMNIST/data/test"
+TRAIN_PATH = "./data/train"
+DEV_PATH = "./data/dev"
+TEST_PATH = "./data/test"
 
 # Constants
 AUDIO_LEN = 8000
