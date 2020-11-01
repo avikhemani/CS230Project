@@ -23,9 +23,9 @@ torchDevice = device('cuda' if cuda.is_available() else 'cpu')
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super(NeuralNetwork, self).__init__()
-        self.hidden1 = nn.Linear(AUDIO_LEN, 2000)
+        self.hidden1 = nn.Linear(AUDIO_LEN, 1000)
         nn.init.xavier_uniform_(self.hidden1.weight)
-        self.output = nn.Linear(2000, 10)
+        self.output = nn.Linear(1000, 10)
         nn.init.xavier_uniform_(self.output.weight)
         self.relu = nn.ReLU()
 
@@ -49,6 +49,14 @@ def getInputOutputData(directory):
         input = np.append(timeSeries, np.asarray([0 for _ in range(diff)]))
         xTrain.append(input)
 
+        # Plot the audio file
+        # plt.figure()
+        # plt.plot(input)
+        # plt.xlabel("Time")
+        # plt.ylabel("Amplitude")
+        # plt.plot()
+        # plt.show()
+
         digit = int(fileName[0])
         output = [0 for _ in range(10)]
         output[digit] = 1
@@ -66,7 +74,7 @@ def neuralNetworkTorch(xTrain, yTrain):
     nnet = NeuralNetwork().to(torchDevice)
     loss_function = nn.MultiLabelSoftMarginLoss()
     #loss_function = nn.MultiLabelMarginLoss()
-    optimizer = optim.Adam(nnet.parameters(), lr=0.002)
+    optimizer = optim.Adam(nnet.parameters(), lr=0.001)
 
     nnet.train()
     for epoch in range(NUM_EPOCHS):
@@ -81,13 +89,19 @@ def neuralNetworkTorch(xTrain, yTrain):
 
     return nnet
 
-def reportAccuracy(prediction, actual):
+def reportAccuracy(xTest, yTest):
+    xTestTensor = from_numpy(xTest).type(FloatTensor).to(torchDevice)
+    output = nnet(xTestTensor)
+    numpyOutput = output.cpu().detach().numpy()
+    prediction = np.zeros_like(numpyOutput)
+    prediction[np.arange(len(numpyOutput)), numpyOutput.argmax(1)] = 1
+
     print(Style.RESET_ALL)
-    assert len(prediction) == len(actual)
+    assert len(prediction) == len(yTest)
 
     accurate, total = 0, len(prediction)
     for i in range(total):
-        if prediction[i].argmax(0) == actual[i].argmax(0): accurate += 1
+        if prediction[i].argmax(0) == yTest[i].argmax(0): accurate += 1
 
     print("Accuracy ", accurate/total)
 
@@ -100,7 +114,7 @@ def main():
     nnet.eval()
     xTestTensor = from_numpy(xTest).type(FloatTensor).to(torchDevice)
     output = nnet(xTestTensor)
-    numpyOutput = output.detach().numpy()
+    numpyOutput = output.cpu().detach().numpy()
     prediction = np.zeros_like(numpyOutput)
     prediction[np.arange(len(numpyOutput)), numpyOutput.argmax(1)] = 1
     print(prediction)
