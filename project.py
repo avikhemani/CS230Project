@@ -50,7 +50,7 @@ class ConvNetwork(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2))
         self.drop_out = nn.Dropout()
-        self.fc1 = nn.Linear( * 3 * 10, 1000)
+        self.fc1 = nn.Linear(3 * 3 * 10, 1000)
         self.fc2 = nn.Linear(1000, 10)
 
     def forward(self, x):
@@ -66,7 +66,7 @@ class ConvNetwork(nn.Module):
 def getInputOutputData(directory, createImage):
     fileNames = os.listdir(directory)
     n = len(fileNames)
-    random.seed(30)
+    random.seed(1)
     random.shuffle(fileNames)
 
     xTrain = []
@@ -74,7 +74,7 @@ def getInputOutputData(directory, createImage):
     pad1d = lambda a, i: a[0: i] if a.shape[0] > i else np.hstack((a, np.zeros(i - a.shape[0])))
     pad2d = lambda a, i: a[:, 0: i] if a.shape[1] > i else np.hstack((a, np.zeros((a.shape[0],i - a.shape[1]))))
     for (i, fileName) in enumerate(fileNames):
-        if (i+1) % 1000 == 0: print(Fore.GREEN + "Loaded " + str(i+1) + " out of " + str(n))
+        if (i+1) % 500 == 0: print(Fore.GREEN + "Loaded " + str(i+1) + " out of " + str(n))
         timeSeries, samplingRate = librosa.load(os.path.join(directory, fileName), sr=AUDIO_LEN)
         #timeSeries = librosa.util.normalize(timeSeries)
 
@@ -173,7 +173,14 @@ def reportAccuracy(xTest, yTest):
 def main():
     useConvNet = True
     xTrain, yTrain = getInputOutputData(TRAIN_PATH, useConvNet)
-    #xTest, yTest = getInputOutputData(DEV_PATH)
+    xDev, yDev = getInputOutputData(DEV_PATH, useConvNet)
+    xTest, yTest = getInputOutputData(TEST_PATH, useConvNet)
+    np.save("./xTrainConv", xTrain)
+    np.save("./yTrainConv", yTrain)
+    np.save("./xDevConv", xDev)
+    np.save("./yDevConv", yDev)
+    np.save("./xTestConv", xTest)
+    np.save("./yTestConv", yTest)
 
     if not useConvNet:
         # ------ NeuralNetworkTorch -----
