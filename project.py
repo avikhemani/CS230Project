@@ -13,10 +13,11 @@ import random
 TRAIN_PATH = "./data/train"
 DEV_PATH = "./data/dev"
 TEST_PATH = "./data/test"
+AVI_PATH = "./data/avi"
 
 # Constants
 AUDIO_LEN = 16000
-NUM_EPOCHS = 25
+NUM_EPOCHS = 50
 BATCH_SIZE = 64
 
 # GPU availability
@@ -49,16 +50,18 @@ class ConvNetwork(nn.Module):
             nn.Conv2d(5, 10, kernel_size=5, stride=1, padding=0),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2))
-        self.drop_out = nn.Dropout()
-        self.fc1 = nn.Linear(3 * 3 * 10, 1000)
+        # self.drop_out = nn.Dropout()
+        self.fc1 = nn.Linear(10*253*5, 1000)
+        # self.fc11 = nn.Linear(5000, 1000)
         self.fc2 = nn.Linear(1000, 10)
 
     def forward(self, x):
         x = self.layer1(x)
         x = self.layer2(x)
         x = x.reshape(x.size(0), -1)
-        x = self.drop_out(x)
+        # x = self.drop_out(x)
         x = self.fc1(x)
+        # x = self.fc11(x)
         x = self.fc2(x)
         x = F.softmax(x, dim=1)
         return x
@@ -138,8 +141,7 @@ def convNetworkTorch(xTrain, yTrain):
         yTrainTensors[i] = from_numpy(yTrainTensors[i]).to(torchDevice)
     convnet = ConvNetwork().to(torchDevice)
     loss_function = nn.MultiLabelSoftMarginLoss()
-    #loss_function = nn.MultiLabelMarginLoss()
-    optimizer = optim.Adam(nnet.parameters(), lr=0.001)
+    optimizer = optim.Adam(nnet.parameters(), lr=0.000001)
 
     convnet.train()
     for epoch in range(NUM_EPOCHS):
@@ -154,9 +156,9 @@ def convNetworkTorch(xTrain, yTrain):
 
     return convnet
 
-def reportAccuracy(xTest, yTest):
-    xTestTensor = from_numpy(xTest).type(FloatTensor).to(torchDevice)
-    output = nnet(xTestTensor)
+def reportAccuracy(xTest, yTest, trainedNet, isImage):
+    xTestTensor = from_numpy(xTest).type(FloatTensor).to(torchDevice) if not isImage else from_numpy(np.expand_dims(xTest, axis=1)).type(FloatTensor).to(torchDevice)
+    output = trainedNet(xTestTensor)
     numpyOutput = output.cpu().detach().numpy()
     prediction = np.zeros_like(numpyOutput)
     prediction[np.arange(len(numpyOutput)), numpyOutput.argmax(1)] = 1
@@ -166,7 +168,8 @@ def reportAccuracy(xTest, yTest):
 
     accurate, total = 0, len(prediction)
     for i in range(total):
-        if prediction[i].argmax(0) == yTest[i].argmax(0): accurate += 1
+        if prediction[i].argmax(0) == yTest[i].argmax(0):
+          accurate += 1
 
     print("Accuracy ", accurate/total)
 
@@ -175,33 +178,10 @@ def main():
     xTrain, yTrain = getInputOutputData(TRAIN_PATH, useConvNet)
     xDev, yDev = getInputOutputData(DEV_PATH, useConvNet)
     xTest, yTest = getInputOutputData(TEST_PATH, useConvNet)
-    np.save("./xTrainConv", xTrain)
-    np.save("./yTrainConv", yTrain)
-    np.save("./xDevConv", xDev)
-    np.save("./yDevConv", yDev)
-    np.save("./xTestConv", xTest)
-    np.save("./yTestConv", yTest)
 
-    if not useConvNet:
-        # ------ NeuralNetworkTorch -----
-        nnet = neuralNetworkTorch(xTrain, yTrain)
-        nnet.eval()
-        xTestTensor = from_numpy(xTest).type(FloatTensor).to(torchDevice)
-        output = nnet(xTestTensor)
-        numpyOutput = output.cpu().detach().numpy()
-        prediction = np.zeros_like(numpyOutput)
-        prediction[np.arange(len(numpyOutput)), numpyOutput.argmax(1)] = 1
-        reportAccuracy(prediction, yTest)
-    else:
-        # ------ ConvNetworkTorch -----
-        convnet = convNetworkTorch(xTrain, yTrain)
-        convnet.eval()
-        xTestTensor = from_numpy(np.expand_dims(xTest, axis=1)).type(FloatTensor).to(torchDevice)
-        output = convnet(xTestTensor)
-        numpyOutput = output.cpu().detach().numpy()
-        prediction = np.zeros_like(numpyOutput)
-        prediction[np.arange(len(numpyOutput)), numpyOutput.argmax(1)] = 1
-        reportAccuracy(prediction, yTest)
+    nnet = neuralNetworkTorch(xTrain, yTrain) if not useConvNet else convNetworkTorch(xTrain, yTrain)
+    nnet.eval()
+    reportAccuracy(xDev, yDev, nnet, useConvNet)
 
 if __name__ == '__main__':
     main()
